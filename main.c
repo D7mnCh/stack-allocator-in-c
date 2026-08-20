@@ -6,7 +6,7 @@
 #include<string.h>
 #include<stdlib.h>
 
-#define DEFAULT_CAPICITY 256
+#define DEFAULT_CAPACITY 256
 
 typedef struct {
     size_t  *items;
@@ -17,21 +17,35 @@ typedef struct {
 }VecSizeT;
 
 typedef struct {
-    char* start;
+    char *start;
     size_t offset;
     size_t size;
     // can't use an array cuz dync one can grow, the other can't
     VecSizeT prev_allocations;
-
 } StackAlloc;
 
 void vec_size_t_push (VecSizeT* vec, size_t item) {
+    // used later to inialize the reallocated vector
+    size_t old_capacity= vec->capacity;
+
     if (vec->capacity <= vec->count) {
-        if (vec->capacity == 0) vec->capacity = DEFAULT_CAPICITY;
-        else vec->capacity *= 2;
-        // NOTE chunk will contain garbage, can't use memset cuz
-        //it will init first bytes(want to to init after items)
-        vec->items = realloc(vec->items, vec->capacity*sizeof(size_t));
+        size_t new_capacity = vec->capacity = vec->capacity == 0 ? DEFAULT_CAPACITY: vec->capacity * 2;
+        // i think it's dengerous to mutate vec->items, if it gives NULL then my prev vec->items
+        //location is gone, and i can't access data on it anymore
+        size_t *new_vec = vec->items = realloc(vec->items, vec->capacity * sizeof(size_t));
+        if (new_vec == NULL) {
+            printf("[ERROR] realloc failed\n");
+            return;
+        }
+
+        size_t *new_vec_init = memset(new_vec + old_capacity, 0, (new_capacity - old_capacity)*sizeof(size_t));
+        if (new_vec_init == NULL) {
+            printf("[ERROR] memset failed\n");
+            return;
+        }
+
+        vec->items    = new_vec;
+        vec->capacity = new_capacity;
     }
 
     vec->items[vec->count++] = item;
@@ -39,17 +53,20 @@ void vec_size_t_push (VecSizeT* vec, size_t item) {
 
 void vec_size_t_pop (VecSizeT* vec) {
     if (vec->count == 0) {
-        printf("[WARNING] VecSizeT is empty");
+        printf("[WARNING] VecSizeT is empty\n");
         return;
     }
 
-    vec->items[vec->count--] = 0u;
+    vec->items[--vec->count] = 0u;
 }
 
 
-StackAlloc stack_alloc_build(int size) {
-    char* chunk = malloc(size);
-    memset(chunk, 0, size);
+StackAlloc stack_alloc_build(size_t size) {
+    char* chunk = calloc(1, size);
+    if (chunk == NULL) {
+        printf("[ERROR] malloc failed\n");
+        return (StackAlloc){0};
+    }
 
     StackAlloc stack_alloc = {.start = chunk, .size = size, .offset = 0u, .prev_allocations = {0}};
 
@@ -70,13 +87,13 @@ void *stack_alloc_add(StackAlloc* alloc, size_t added_size) {
 
     printf("[iNFO] Push used_bytes: %zu -> %zu\n", offset_before, alloc->offset);
 
-    char* tracker = alloc->start + alloc->offset;
+    char* tracker = alloc->start + offset_before;
     return tracker;
 }
 
 // NOTE in order to pop, need to store allocation sizes
 void stack_alloc_pop(StackAlloc* alloc) {
-    if (alloc->size <= 0) {
+    if (alloc->prev_allocations.count == 0) {
         printf("[WARNING] can't pop, arena is empty!\n");
         return;
     }
@@ -115,6 +132,12 @@ int main () {
     printf("y: %d\n",point->y);
     printf("z: %s\n",point->string);
     printf("z: %p\n",point->string);
+
+    for (int i = 0; i <10; i++){
+        printf("%zu\n", stack_alloc.prev_allocations.items[i]);
+    }
+
+    stack_alloc_pop(&stack_alloc);
 
     stack_alloc_free(&stack_alloc);
 }
