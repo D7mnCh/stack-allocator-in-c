@@ -26,18 +26,19 @@ typedef struct {
 
 void vec_size_t_push (VecSizeT* vec, size_t item) {
     // used later to inialize the reallocated vector
-    size_t old_capacity= vec->capacity;
+    size_t old_capacity = vec->capacity;
 
     if (vec->capacity <= vec->count) {
-        size_t new_capacity = vec->capacity = vec->capacity == 0 ? DEFAULT_CAPACITY: vec->capacity * 2;
+        size_t new_capacity = vec->capacity == 0 ? DEFAULT_CAPACITY: vec->capacity * 2;
         // i think it's dengerous to mutate vec->items, if it gives NULL then my prev vec->items
         //location is gone, and i can't access data on it anymore
-        size_t *new_vec = vec->items = realloc(vec->items, vec->capacity * sizeof(size_t));
+        size_t *new_vec = realloc(vec->items, new_capacity* sizeof(size_t));
         if (new_vec == NULL) {
             printf("[ERROR] realloc failed\n");
             return;
         }
 
+        // init new blocks with 0 after the allocated blocks
         size_t *new_vec_init = memset(new_vec + old_capacity, 0, (new_capacity - old_capacity)*sizeof(size_t));
         if (new_vec_init == NULL) {
             printf("[ERROR] memset failed\n");
@@ -85,7 +86,7 @@ void *stack_alloc_add(StackAlloc* alloc, size_t added_size) {
 
     vec_size_t_push(&alloc->prev_allocations, added_size);
 
-    printf("[iNFO] Push used_bytes: %zu -> %zu\n", offset_before, alloc->offset);
+    printf("[INFO] Push used_bytes: %zu -> %zu\n", offset_before, alloc->offset);
 
     char* tracker = alloc->start + offset_before;
     return tracker;
