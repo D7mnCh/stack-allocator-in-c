@@ -32,20 +32,20 @@ void vec_size_t_push (VecSizeT* vec, size_t item) {
         size_t new_capacity = vec->capacity == 0 ? DEFAULT_CAPACITY: vec->capacity * 2;
         // i think it's dengerous to mutate vec->items, if it gives NULL then my prev vec->items
         //location is gone, and i can't access data on it anymore
-        size_t *new_vec = realloc(vec->items, new_capacity* sizeof(size_t));
-        if (new_vec == NULL) {
+        size_t *new_vec_items = realloc(vec->items, new_capacity* sizeof(size_t));
+        if (new_vec_items == NULL) {
             printf("[ERROR] realloc failed\n");
             return;
         }
 
         // init new blocks with 0 after the allocated blocks
-        size_t *new_vec_init = memset(new_vec + old_capacity, 0, (new_capacity - old_capacity)*sizeof(size_t));
-        if (new_vec_init == NULL) {
+        size_t *new_vec_items_init = memset(new_vec_items + old_capacity, 0, (new_capacity - old_capacity)*sizeof(size_t));
+        if (new_vec_items_init == NULL) {
             printf("[ERROR] memset failed\n");
             return;
         }
 
-        vec->items    = new_vec;
+        vec->items    = new_vec_items_init;
         vec->capacity = new_capacity;
     }
 
